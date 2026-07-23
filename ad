@@ -1,0 +1,5 @@
+while true do
+    game:GetService("ReplicatedStorage"):WaitForChild("networkContainer", 9e9):WaitForChild("remote_Summer2026/skipCrate", 9e9):FireServer() wait(2)
+    game:GetService("ReplicatedStorage"):WaitForChild("networkContainer", 9e9):WaitForChild("rfunction_Summer2026/openCrate", 9e9):InvokeServer()
+    wait(58)
+end 
