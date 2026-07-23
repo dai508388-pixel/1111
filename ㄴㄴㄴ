@@ -1,0 +1,56 @@
+local module = loadstring(game:HttpGet"https://raw.githubusercontent.com/LeoKholYt/roblox/main/lk_serverhop.lua")()
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+
+local targetList = {
+"TealYX380",
+"u9jxFrostVoidGG8122",
+"yeq0_VortexOmegaZone",
+"to8qShadowSonicZone",
+"5hs4Blaz3UltraGG79",
+"2brBlizzardVenomZone",
+"k11l_GalaxyFoxAlt",
+"d18bRogueSonic",
+"achTurboPixelGG2908",
+"p13_FuryAce9162",
+"lguPixelVenomFPS4018",
+"2f8v_OrbitSonicXD",
+"umwOrbitCode6530",
+"q3mThunderVenomTV",
+"hki2_PowerFury9330",
+"5nm_OrbitOmegaOP",
+"oc8rSkyArrowGG816",
+"8qtx_GlitchAquaXD",
+"0yy_PrismArrow6561",
+"1pm_VortexLegendLive",
+"bxe6ShadowByteLive",
+"mg7TigerClawAlt8192",
+"yp0PowerVenomPlays",
+"99zhSilverNightPro",
+"wvy_NinjaBlock",
+"wn5_SilverGlitchCore"
+}
+
+local alreadyDetected = {}
+
+local function checkPlayer(player)
+if player.Name ~= LocalPlayer.Name and table.find(targetList, player.Name) then
+if not alreadyDetected[player.Name] then
+module:Teleport(game.PlaceId) -- ← 여기 수정됨
+alreadyDetected[player.Name] = true
+end
+end
+end
+
+-- 이미 게임에 있는 플레이어 체크
+for _, player in ipairs(Players:GetPlayers()) do
+checkPlayer(player)
+end
+
+-- 60초마다 새로 들어온 사람 체크
+while true do
+for _, player in ipairs(Players:GetPlayers()) do
+checkPlayer(player)
+end
+task.wait(1)
+end
