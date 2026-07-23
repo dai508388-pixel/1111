@@ -1,0 +1,122 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+
+local player = Players.LocalPlayer
+
+local function getCoin()
+	local mainUI = player.PlayerGui:FindFirstChild("MainUI")
+	if not mainUI then return nil end
+	local round = mainUI:FindFirstChild("Round")
+	if not round then return nil end
+	return round:FindFirstChild("Coin")
+end
+
+local function getStatusLabel()
+	local mainUI = player.PlayerGui:FindFirstChild("MainUI")
+	if not mainUI then return nil end
+	return mainUI:FindFirstChild("StatusLabel")
+end
+
+local character = player.Character or player.CharacterAdded:Wait()
+local humanoid = character:WaitForChild("Humanoid")
+local rootPart = character:WaitForChild("HumanoidRootPart")
+
+player.CharacterAdded:Connect(function(char)
+	character = char
+	humanoid = char:WaitForChild("Humanoid")
+	rootPart = char:WaitForChild("HumanoidRootPart")
+end)
+
+local moving = false
+local moveDir = Vector3.zero
+
+RunService.RenderStepped:Connect(function()
+	if moving and humanoid and humanoid.Health > 0 and rootPart then
+		humanoid:Move(moveDir, false)
+	end
+end)
+
+local function isStuck()
+	if not rootPart then return false end
+	return rootPart.Velocity.Magnitude < 2 and moveDir.Magnitude > 0
+end
+
+-- 방향 변경 루프
+local function directionLoop()
+	while moving and humanoid and humanoid.Health > 0 do
+		local label = getStatusLabel()
+		local isVoting = label and label.Text and label.Text:find("%(%d+%)")
+		
+		if isVoting then
+			-- ================== 투표 중 ==================
+			local mapVote = Workspace:FindFirstChild("Lobby", true):FindFirstChild("MapVote", true)
+			if mapVote then
+				local targetPos = mapVote:IsA("BasePart") and mapVote.Position or mapVote:GetPivot().Position
+				local dir = (targetPos - rootPart.Position)
+				moveDir = Vector3.new(dir.X, 0, dir.Z).Unit
+			else
+				moveDir = Vector3.new(math.random(-100,100), 0, math.random(-100,100)).Unit
+			end
+		else
+			-- ================== 일반 이동 ==================
+			moveDir = Vector3.new(math.random(-100,100), 0, math.random(-100,100)).Unit
+		end
+		
+		-- 2 ~ 2.5초마다 방향 변경
+		task.wait(math.random(20, 25) / 10)
+		
+		-- 벽에 막히면 즉시 방향 전환
+		if isStuck() then
+			moveDir = Vector3.new(math.random(-100,100), 0, math.random(-100,100)).Unit
+		end
+	end
+end
+
+local function startMoving()
+	if moving then return end
+	moving = true
+	moveDir = Vector3.new(math.random(-100,100), 0, math.random(-100,100)).Unit
+	task.spawn(directionLoop)
+end
+
+local function stopMoving()
+	moving = false
+	moveDir = Vector3.zero
+	if humanoid then
+		humanoid:Move(Vector3.zero, false)
+	end
+end
+
+local function mainUpdate()
+	local currentCoin = getCoin()
+	if currentCoin and currentCoin.Visible then
+		stopMoving()
+	else
+		startMoving()
+	end
+end
+
+-- 점프 루프 (독립)
+task.spawn(function()
+	while true do
+		if moving and humanoid and humanoid.Health > 0 and math.random() <= 0.5 then
+			humanoid.Jump = true
+		end
+		task.wait(math.random(8, 15)/10)
+	end
+end)
+
+-- 체크 루프
+task.spawn(function()
+	while task.wait(0.8) do
+		mainUpdate()
+	end
+end)
+
+mainUpdate()
+
+player.CharacterAdded:Connect(function()
+	task.wait(1)
+	mainUpdate()
+end)
