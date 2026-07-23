@@ -1,0 +1,115 @@
+--// LocalScript (StarterGui에 넣으세요)
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local player = Players.LocalPlayer
+local playerGui = player:FindFirstChild("PlayerGui")
+
+--// Stats 기다리기
+local stats = player:WaitForChild("Stats")
+local currencies = stats:WaitForChild("Currencies")
+local summerCoins = currencies:WaitForChild("SummerCoins")
+
+--// =========================================
+--// Infinite Yield 스타일 norender 기능
+--// =========================================
+local rendering = true
+
+local function setNorender(state) -- true = norender 켜기 (3D 끄기)
+    rendering = not state
+    pcall(function()
+        RunService:Set3dRenderingEnabled(not state) -- false = 3D 렌더링 비활성화
+    end)
+end
+
+--// norender 자동 활성화 (UI가 켜지면 3D 렌더링 끔)
+setNorender(true)
+
+--// 나중에 다시 켜고 싶을 때 아래 함수 사용
+-- setNorender(false)   -- render 켜기
+-- setNorender(true)    -- norender 다시 켜기
+
+--// =========================================
+--// 전체 화면 UI 생성
+--// =========================================
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "SummerCoinsFullScreenUI"
+screenGui.IgnoreGuiInset = true
+screenGui.ResetOnSpawn = false
+screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+screenGui.DisplayOrder = 999
+screenGui.Parent = playerGui
+
+--// 화면 전체를 덮는 검은 프레임
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.Size = UDim2.new(1, 0, 1, 0)
+mainFrame.Position = UDim2.new(0, 0, 0, 0)
+mainFrame.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+mainFrame.BackgroundTransparency = 0.2
+mainFrame.BorderSizePixel = 0
+mainFrame.Parent = screenGui
+
+--// 플레이어 목록 표시
+local playerList = Instance.new("TextLabel")
+playerList.Name = "PlayerList"
+playerList.Size = UDim2.new(0.3, 0, 0.3, 0)
+playerList.Position = UDim2.new(0, 30, 0, 30)
+playerList.BackgroundTransparency = 1
+playerList.TextColor3 = Color3.fromRGB(255, 255, 255)
+playerList.TextStrokeTransparency = 0.5
+playerList.Font = Enum.Font.Gotham
+playerList.TextSize = 16
+playerList.TextXAlignment = Enum.TextXAlignment.Left
+playerList.TextYAlignment = Enum.TextYAlignment.Top
+playerList.TextWrapped = false
+playerList.Parent = mainFrame
+
+local function updatePlayerList()
+	local text = "PLAYERS (" .. #Players:GetPlayers() .. ")\n\n"
+
+	for _, plr in ipairs(Players:GetPlayers()) do
+		text ..= plr.Name
+
+		if plr == player then
+			text ..= " (You)"
+		end
+
+		text ..= "\n"
+	end
+
+	playerList.Text = text
+end
+
+Players.PlayerAdded:Connect(updatePlayerList)
+Players.PlayerRemoving:Connect(updatePlayerList)
+
+updatePlayerList()
+
+--// 중앙 Summer Coins 표시 라벨
+local coinLabel = Instance.new("TextLabel")
+coinLabel.Name = "CoinLabel"
+coinLabel.Size = UDim2.new(0.7, 0, 0.4, 0)
+coinLabel.Position = UDim2.new(0.15, 0, 0.3, 0)
+coinLabel.BackgroundTransparency = 1
+coinLabel.TextColor3 = Color3.fromRGB(255, 215, 0)
+coinLabel.TextStrokeTransparency = 0.2
+coinLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
+coinLabel.Font = Enum.Font.GothamBlack
+coinLabel.TextScaled = true
+coinLabel.Text = "SUMMER COINS\n" .. tostring(summerCoins.Value)
+coinLabel.Parent = mainFrame
+
+--// 값 변경 감지 (norender 방식 - RenderStepped 루프 없음)
+local function updateUI()
+    coinLabel.Text = "SUMMER COINS\n" .. tostring(summerCoins.Value)
+end
+
+summerCoins:GetPropertyChangedSignal("Value"):Connect(updateUI)
+updateUI()
+
+--// UI가 파괴될 때 자동으로 렌더링 복구 (선택)
+screenGui.Destroying:Connect(function()
+    setNorender(false)
+end)
+
+print("[SummerCoins UI] norender 활성화 + 전체 화면 UI 생성 완료")
