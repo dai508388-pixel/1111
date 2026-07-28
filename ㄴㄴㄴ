@@ -8,13 +8,14 @@ local TeleportService = game:GetService("TeleportService")
 local HttpService = game:GetService("HttpService")
 
 local targetList = {
-	"ZeroGK591", "FrostyKatherine363", "KeithCosmic6746", "BlazePB279", "TideDC798",
-	"Gianni_MegaNova", "Soren_SN595", "EdwardMB753", "MarlinSL374", "Caner_YR350",
-	"RazanOsprey99", "TamaraOV608", "SmartExileHD", "HinataYW680", "ChristianZenith29",
-	"RushYA364", "Aiden_UI504", "HendrixLQ593", "IguanaNQ958", "EmilyQuantum46",
-	"NarwhalKatya65", "RachelKA710", "NikhilGale63", "RavenDZ334", "WilliamZF918",
-	"AydenGalaxy90", "Virginia_GG784", "CitadelKE850", "PantherDJ189", "FrenzyBlake10",
-	"RiftVB876", "SharonSovereign39", "Samantha_GG511"
+   "BennettIvensu2010", "DainKokar", "AnnabelSandor", "ElineSandenKramon", "BenClaeson",
+"CasZwanikPepren", "CaihongMulden", "Eline_AARTIKYT", "BeatriceSmituAarte", "DorothyWillor2024",
+"BepSmitzDekkek", "Bounsang_Maasu", "Daw3iNoordon", "Cath_HendenYT", "DauweMarturPeter16_Y",
+"Ashl3yEv3rsk10", "DrakeSandun", "Annemieke_Kramar2005", "DerekFaber", "DanaJansyn56",
+"ElijahPeprelGerrit20", "AleidUitr0rHenden", "AtieWilln", "BodilBoeren", "Chlo3D3jorgFabr3n",
+"Bauke_Daanel", "DaphneClaesaMulden20", "CatharinaVisse2018", "BrettClaes", "Charlotte_FABRUR",
+"CongVelden", "AlexiaVossun", "Ann3t_T3unur2009", "AvaZwanunKoenon2017", "BruunHagenn"
+	
 }
 
 -- Workspace 폴더에 파일 저장 (실행기에서 잘 인식됨)
