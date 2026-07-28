@@ -113,10 +113,7 @@ end
 checkAndHop()
 
 -- 새로운 플레이어 입장 시 체크
-Players.PlayerAdded:Connect(function()
-	task.wait(2)
-	checkAndHop()
-end)
+
 
 print("✅ 실행기용 서버홉 스크립트 로드 완료")
 print("   저장 경로: " .. HOP_FILE)
