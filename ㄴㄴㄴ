@@ -103,7 +103,7 @@ local function countTargets()
 end
 
 local function checkAndHop()
-	if countTargets() >= 2 then
+	if countTargets() >= 3 then
 		print("[서버홉] 타겟 2명 이상 감지 → 서버 이동 시작")
 		ServerHop()
 	end
