@@ -8,14 +8,12 @@ local TeleportService = game:GetService("TeleportService")
 local HttpService = game:GetService("HttpService")
 
 local targetList = {
-   "BennettIvensu2010", "DainKokar", "AnnabelSandor", "ElineSandenKramon", "BenClaeson",
-"CasZwanikPepren", "CaihongMulden", "Eline_AARTIKYT", "BeatriceSmituAarte", "DorothyWillor2024",
-"BepSmitzDekkek", "Bounsang_Maasu", "Daw3iNoordon", "Cath_HendenYT", "DauweMarturPeter16_Y",
-"Ashl3yEv3rsk10", "DrakeSandun", "Annemieke_Kramar2005", "DerekFaber", "DanaJansyn56",
-"ElijahPeprelGerrit20", "AleidUitr0rHenden", "AtieWilln", "BodilBoeren", "Chlo3D3jorgFabr3n",
-"Bauke_Daanel", "DaphneClaesaMulden20", "CatharinaVisse2018", "BrettClaes", "Charlotte_FABRUR",
-"CongVelden", "AlexiaVossun", "Ann3t_T3unur2009", "AvaZwanunKoenon2017", "BruunHagenn"
-	
+ 
+ "SylvanaH3ndri", "Marly_VISSON", "Jorrit_Bosse", "MaykePeprik", "XxAidenBeensonxX",
+ "Yasmin_UITRIK", "StormRuiturNoordun", "Yusei_Aartur", "Okk3_P3tik2020", "Jann3P3prun10",
+ "Jantin3QuintorUitron", "EwoutVeldonBos", "NathanOomun2006", "XxG3rritSmitsxX",
+ "XxWonyoung_SMITNXX", "Robb3rt_Bo3r3l", "Xx_EthanKuip3rWill3m", "FriedaMaasl"
+
 }
 
 -- Workspace 폴더에 파일 저장 (실행기에서 잘 인식됨)
