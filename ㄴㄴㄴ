@@ -1,117 +1,96 @@
 -- =============================================
 -- 실행기용 서버홉 스크립트 (Workspace에 파일 저장)
 -- =============================================
-
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local TeleportService = game:GetService("TeleportService")
 local HttpService = game:GetService("HttpService")
-
 local targetList = {
- 
  "SylvanaH3ndri", "Marly_VISSON", "Jorrit_Bosse", "MaykePeprik", "XxAidenBeensonxX",
  "Yasmin_UITRIK", "StormRuiturNoordun", "Yusei_Aartur", "Okk3_P3tik2020", "Jann3P3prun10",
  "Jantin3QuintorUitron", "EwoutVeldonBos", "NathanOomun2006", "XxG3rritSmitsxX",
  "XxWonyoung_SMITNXX", "Robb3rt_Bo3r3l", "Xx_EthanKuip3rWill3m", "FriedaMaasl"
-
 }
-
 -- Workspace 폴더에 파일 저장 (실행기에서 잘 인식됨)
 local FOLDER_NAME = "ServerHopData"
 local HOP_FILE = FOLDER_NAME .. "/avoid-servers.json"
-
 -- 폴더 생성
 if not isfolder(FOLDER_NAME) then
-	makefolder(FOLDER_NAME)
+makefolder(FOLDER_NAME)
 end
-
 local AllIDs = {}
 local foundAnything = ""
-
 -- 파일 로드
 local success, result = pcall(function()
-	return readfile(HOP_FILE)
+return readfile(HOP_FILE)
 end)
-
 if success then
-	AllIDs = HttpService:JSONDecode(result)
+AllIDs = HttpService:JSONDecode(result)
 else
-	-- 파일이 없으면 새로 생성
-	pcall(function()
-		writefile(HOP_FILE, HttpService:JSONEncode(AllIDs))
-	end)
+-- 파일이 없으면 새로 생성
+pcall(function()
+writefile(HOP_FILE, HttpService:JSONEncode(AllIDs))
+end)
 end
-
 local function TPReturner(placeId)
-	local Site
-	if foundAnything == "" then
-		Site = HttpService:JSONDecode(game:HttpGet('https://games.roblox.com/v1/games/' .. placeId .. '/servers/Public?sortOrder=Asc&limit=100'))
-	else
-		Site = HttpService:JSONDecode(game:HttpGet('https://games.roblox.com/v1/games/' .. placeId .. '/servers/Public?sortOrder=Asc&limit=100&cursor=' .. foundAnything))
-	end
-
-	if Site.nextPageCursor and Site.nextPageCursor ~= "null" then
-		foundAnything = Site.nextPageCursor
-	end
-
-	for _, v in pairs(Site.data) do
-		local ID = tostring(v.id)
-		
-		-- 이미 방문한 서버인지 확인
-		local alreadyVisited = false
-		for _, existing in pairs(AllIDs) do
-			if ID == tostring(existing) then
-				alreadyVisited = true
-				break
-			end
-		end
-
-		if not alreadyVisited and tonumber(v.maxPlayers) > tonumber(v.playing) then
-			table.insert(AllIDs, ID)
-			pcall(function()
-				writefile(HOP_FILE, HttpService:JSONEncode(AllIDs))
-				TeleportService:TeleportToPlaceInstance(placeId, ID, LocalPlayer)
-			end)
-			wait(4)
-			return
-		end
-	end
+local Site
+if foundAnything == "" then
+Site = HttpService:JSONDecode(game:HttpGet('https://games.roblox.com/v1/games/' .. placeId .. '/servers/Public?sortOrder=Desc&limit=100'))
+else
+Site = HttpService:JSONDecode(game:HttpGet('https://games.roblox.com/v1/games/' .. placeId .. '/servers/Public?sortOrder=Desc&limit=100&cursor=' .. foundAnything))
 end
-
+if Site.nextPageCursor and Site.nextPageCursor ~= "null" then
+foundAnything = Site.nextPageCursor
+end
+for _, v in pairs(Site.data) do
+local ID = tostring(v.id)
+-- 이미 방문한 서버인지 확인
+local alreadyVisited = false
+for _, existing in pairs(AllIDs) do
+if ID == tostring(existing) then
+alreadyVisited = true
+break
+end
+end
+if not alreadyVisited and tonumber(v.maxPlayers) > tonumber(v.playing) then
+table.insert(AllIDs, ID)
+pcall(function()
+writefile(HOP_FILE, HttpService:JSONEncode(AllIDs))
+TeleportService:TeleportToPlaceInstance(placeId, ID, LocalPlayer)
+end)
+wait(4)
+return
+end
+end
+end
 local function ServerHop()
-	while true do
-		pcall(function()
-			TPReturner(game.PlaceId)
-			if foundAnything ~= "" then
-				TPReturner(game.PlaceId)
-			end
-		end)
-		wait(1)
-	end
+while true do
+pcall(function()
+TPReturner(game.PlaceId)
+if foundAnything ~= "" then
+TPReturner(game.PlaceId)
 end
-
+end)
+wait(1)
+end
+end
 local function countTargets()
-	local count = 0
-	for _, player in ipairs(Players:GetPlayers()) do
-		if player ~= LocalPlayer and table.find(targetList, player.Name) then
-			count = count + 1
-		end
-	end
-	return count
+local count = 0
+for _, player in ipairs(Players:GetPlayers()) do
+if player ~= LocalPlayer and table.find(targetList, player.Name) then
+count = count + 1
 end
-
+end
+return count
+end
 local function checkAndHop()
-	if countTargets() >= 3 then
-		print("[서버홉] 타겟 2명 이상 감지 → 서버 이동 시작")
-		ServerHop()
-	end
+if countTargets() >= 3 then
+print("[서버홉] 타겟 3명 이상 감지 → 서버 이동 시작")
+ServerHop()
 end
-
+end
 -- 초기 체크
 checkAndHop()
-
 -- 새로운 플레이어 입장 시 체크
-
-
 print("✅ 실행기용 서버홉 스크립트 로드 완료")
-print("   저장 경로: " .. HOP_FILE)
+print(" 저장 경로: " .. HOP_FILE)
