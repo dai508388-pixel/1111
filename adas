@@ -65,9 +65,27 @@ playerList.TextWrapped = false
 playerList.Parent = mainFrame
 
 local function updatePlayerList()
-	local text = "PLAYERS (" .. #Players:GetPlayers() .. ")\n\n"
+	local players = Players:GetPlayers()
 
-	for _, plr in ipairs(Players:GetPlayers()) do
+	table.sort(players, function(a, b)
+		local aName = a.Name:lower()
+		local bName = b.Name:lower()
+
+		local aIsLetter = aName:match("^[a-z]") ~= nil
+		local bIsLetter = bName:match("^[a-z]") ~= nil
+
+		-- 알파벳으로 시작하는 이름을 먼저
+		if aIsLetter ~= bIsLetter then
+			return aIsLetter
+		end
+
+		-- 같은 그룹이면 알파벳 순
+		return aName < bName
+	end)
+
+	local text = "PLAYERS (" .. #players .. ")\n\n"
+
+	for _, plr in ipairs(players) do
 		text ..= plr.Name
 
 		if plr == player then
