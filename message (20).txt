@@ -1,0 +1,222 @@
+local player = game:GetService("Players").LocalPlayer
+local Net = require(game:GetService("ReplicatedStorage").Shared.Net)
+local remote = Net.event("e89c992")
+
+-- ====== 1. 공격 실행 ======
+coroutine.wrap(function()
+    while true do
+        task.wait(1)
+        pcall(function()
+            if remote then
+                remote:FireServer()
+            end
+        end)
+    end
+end)()
+
+-- ====== 2. 캐릭터 스탯 ======
+local function setCharacterStats(char)
+    if not char then return end
+    local humanoid = char:FindFirstChild("Humanoid")
+    if humanoid then
+        humanoid.WalkSpeed = 45
+        humanoid.JumpPower = 70
+    end
+end
+
+-- ====== 3. Noclip (강력 유지) ======
+local function enableNoclip(char)
+    if not char then return end
+    for _, part in ipairs(char:GetDescendants()) do
+        if part:IsA("BasePart") then
+            pcall(function()
+                part.CanCollide = false
+                part.CanTouch = false
+            end)
+        end
+    end
+end
+
+local function watchNewParts(char)
+    if not char then return end
+    char.DescendantAdded:Connect(function(part)
+        if part:IsA("BasePart") then
+            pcall(function()
+                part.CanCollide = false
+                part.CanTouch = false
+            end)
+        end
+    end)
+end
+
+local noclipThread = nil
+
+local function startNoclipLoop(char)
+    if noclipThread then
+        coroutine.close(noclipThread)
+        noclipThread = nil
+    end
+    watchNewParts(char)
+    noclipThread = coroutine.create(function()
+        while char and char.Parent do
+            pcall(function()
+                enableNoclip(char)
+            end)
+            task.wait(0.05)
+        end
+    end)
+    coroutine.resume(noclipThread)
+end
+
+-- ====== 4. Trunk 탐색 (재귀) ======
+local function findAllTrunks(folder)
+    local trunks = {}
+    if not folder then return trunks end
+    for _, child in ipairs(folder:GetChildren()) do
+        if child.Name == "Trunk" then
+            table.insert(trunks, child)
+        elseif child:IsA("Folder") or child:IsA("Model") then
+            for _, sub in ipairs(findAllTrunks(child)) do
+                table.insert(trunks, sub)
+            end
+        end
+    end
+    return trunks
+end
+
+local function findClosestTrunk(maxCount)
+    maxCount = maxCount or 20
+    local trees = workspace:FindFirstChild("Decorations")
+    if trees then trees = trees:FindFirstChild("Trees") end
+    if not trees then return nil end
+
+    local allTrunks = findAllTrunks(trees)
+    if #allTrunks == 0 then return nil end
+
+    local sample = {}
+    if #allTrunks <= maxCount then
+        sample = allTrunks
+    else
+        local shuffled = {}
+        for i, v in ipairs(allTrunks) do shuffled[i] = v end
+        for i = #shuffled, 1, -1 do
+            local j = math.random(1, i)
+            shuffled[i], shuffled[j] = shuffled[j], shuffled[i]
+        end
+        for i = 1, maxCount do
+            table.insert(sample, shuffled[i])
+        end
+    end
+
+    local char = player.Character
+    if not char then return nil end
+    local root = char:FindFirstChild("HumanoidRootPart")
+    if not root then return nil end
+
+    local closest = nil
+    local closestDist = math.huge
+    local origin = root.Position
+    for _, trunk in ipairs(sample) do
+        local dist = (trunk.Position - origin).Magnitude
+        if dist < closestDist then
+            closestDist = dist
+            closest = trunk
+        end
+    end
+    return closest
+end
+
+-- ====== 5. 이동 루프 (갈팡질팡 없이 한 목표로만) ======
+local moveThread = nil
+
+local function startMoveLoop()
+    if moveThread then
+        coroutine.close(moveThread)
+        moveThread = nil
+    end
+
+    moveThread = coroutine.create(function()
+        while true do
+            local char = player.Character
+            if not char or not char.Parent then
+                task.wait(0.5)
+                continue
+            end
+
+            local humanoid = char:FindFirstChild("Humanoid")
+            local root = char:FindFirstChild("HumanoidRootPart")
+            if not humanoid or not root then
+                task.wait(0.5)
+                continue
+            end
+
+            if humanoid.Health <= 0 then
+                task.wait(0.5)
+                continue
+            end
+
+            -- 목표 Trunk 찾기
+            local target = findClosestTrunk(20)
+            if not target then
+                task.wait(1)
+                continue
+            end
+
+            -- 목표 설정 (이제 이 target이 사라질 때까지 고정)
+            local targetPos = target.Position
+            print("🚀 목표 고정:", target:GetFullName(), targetPos)
+
+            -- 이동 시작
+            humanoid.WalkSpeed = 45
+            humanoid.JumpPower = 70
+            humanoid:MoveTo(targetPos)
+
+            -- target이 사라지거나 캐릭터가 죽을 때까지 대기 (중간에 다른 target으로 변경하지 않음)
+            while target and target.Parent do
+                task.wait(0.3)
+
+                -- 캐릭터 상태 재확인
+                local curChar = player.Character
+                if not curChar or not curChar.Parent then break end
+                local curHumanoid = curChar:FindFirstChild("Humanoid")
+                if not curHumanoid or curHumanoid.Health <= 0 then break end
+
+                local curRoot = curChar:FindFirstChild("HumanoidRootPart")
+                if curRoot then
+                    -- 목표까지 거리가 5 이상이면 계속 이동 유도 (목표는 고정)
+                    if (targetPos - curRoot.Position).Magnitude > 5 then
+                        -- 이동 방향이 없거나 멈췄으면 다시 MoveTo
+                        if curHumanoid.MoveDirection.Magnitude < 0.5 then
+                            curHumanoid:MoveTo(targetPos)
+                        end
+                    end
+                end
+            end
+
+            print("✅ target 사라짐 또는 캐릭터 사망, 새 목표 탐색")
+            task.wait(0.5) -- 잠시 대기 후 다음 루프
+        end
+    end)
+    coroutine.resume(moveThread)
+end
+
+-- ====== 6. 캐릭터 초기화 ======
+local function onCharacterAdded(char)
+    if not char then return end
+    char:WaitForChild("Humanoid", 5)
+    char:WaitForChild("HumanoidRootPart", 5)
+    setCharacterStats(char)
+    enableNoclip(char)
+    startNoclipLoop(char)
+    startMoveLoop() -- 이동 루프 재시작 (새 목표 탐색)
+end
+
+-- 처음 실행
+if player.Character then
+    onCharacterAdded(player.Character)
+end
+
+player.CharacterAdded:Connect(onCharacterAdded)
+
+-- 스크립트 유지
+while true do task.wait(1) end
