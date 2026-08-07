@@ -2967,7 +2967,7 @@ local function stopAllFarm(reason)
 	AutoFarm.enabled = false
 	AutoFarm.autoLog = false
 	AutoFarm.autoDungeon = false
-	AutoFarm.autoFish = false
+	AutoFarm.autoFish = true
 	AutoFarm.autoQuest = false
 	AutoFarm.autoHeal = false
 	AutoFarm.autoSell = false
