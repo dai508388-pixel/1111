@@ -11,43 +11,7 @@ end
 if not (type(bit.bxor)=="function") and type(bit32.bxor)=="function" then
 bit.bxor=bit32.bxor
 end
-if not (type(bit32.bxor)=="function") then
-bit32.bxor=function(a,b)
-local r,m=0,1
-while a>0 or b>0 do
-local xa,xb=a%2,b%2
-if (not (xa==xb)) then r=r+m end
-a,b,m=math.floor(a/2),math.floor(b/2),m*2
-end
-return r
-end
-bit.bxor=bit32.bxor
-end
-local T,Q,jy,n,a,d,W,oI,u,y,x,pX,Y,w=0B1010_1001, 38, 0X0, 0B10_0001, 0X73, 0XAB, 29, 0X4, 0x3a, 144, 0XCE, 234, 0B111_0101, 0B1010_1110
-local PJ,i,G,r,ih,fG,f,t,lI,o,l,J,X,e=0XA1, 0XE, 118, 0xeb, 46, 0xc, 0B110_0100, 0X4, 0X8C, 238, 0X9B, 57, 0x53, 200
-local m,CR,z,O,c,k,b,Uq,I,Z,R,N,i2,e6=0X4B, 0B1_1011, 0xf, 48, 104, 0B110_1001, 141, 0B1111_0010, 22, 0X60, 0XF1, 1, 0x3e, 0xf2
-local S,gG,s,Ae,ew,p,KT,gh,KH,nR,WX,h,V,E=0xc8, 0XE8, 0B10_1001, 0xb, 145, 0xd8, 0B1001_0000, 205, 0B1110_0101, 0B1000_0001, 226, 0B1011_0111, 153, 0B1111_1101
-local P,Pq,Dd,L,Jc,GO,A,v,pD,M,mx,oT,vU,yZ=83, 0x97, 0B1010_1110, 0B111_1010, 138, 0B111_1001, 0x22, 149, 0XFE, 0x37, 153, 0x3f, 0B10_1000, 0x32
-local KW,g,LA,vD,TV,G2,mN,Ww,C,Sc,bC,UG,F,r2=0B1010_1010, 0x17, 41, 158, 0xf6, 0X6F, 0X70, 0B1010_0000, 0X85, 199, 212, 0xea, 118, 99
-local rB,Xm,tt,H,CN,FY,B,rm,Ha,DG,eq,D,al,Lt=0X1A, 53, 9, 35, 0xd7, 0X7E, 0B1101_1010, 0B1111_0111, 0B100_0010, 0x3, 0xd2, 0XAA, 0X5D, 0x68
-local um,P2,jD,xE,a5,WQ,IW,aG,ae,uC,ZK,uv,fC,r3=0B1101_1100, 0x26, 159, 0xee, 0X22, 65, 0B1_1101, 0x55, 37, 156, 99, 143, 0x29, 0X2A
-local Vz,vW,U,hc,K,xB,Uj,V0,Ak,j,hR,IM,dS,q=0xd4, 73, 0XCF, 167, 0xd0, 0x9d, 47, 155, 0x73, 0X6B, 207, 226, 0B1100_0010, 255
-local Zt,BX,lS,FL,DU,gt,ZL,X4,cl,WY,rs,J4,ay,rp=0xbd, 0B1110_1111, 63, 213, 0B101_1110, 0B10_1010, 0B1101_0001, 0xa3, 0xee, 0B1100_1011, 192, 0x64, 32, 0B1001_1110
-local LJ,av,ui,kv,Pc,lh,kT,OL,rQ,M7,QP,Dr,k7,lJ=0B101_1010, 98, 0X5C, 253, 0x86, 160, 231, 0XD2, 197, 104, 20, 0B1111_0010, 0xb5, 0x2
-local sG,YL,SP,ez,sq,Oh,po,PC,de,N3,Iv,Rw,yR,Ct=0XE, 88, 0B111_1101, 0xcd, 95, 0xc, 0X4F, 152, 216, 0x7e, 26, 76, 160, 0B1110_0000
-local XM,zK,NW,cB,QZ,hr,S2=151, 231, 0X9, 0x26, 0B11_0100, 0x2, 0B101_0010
-local TFF=function(W7C) local W7C=(W7C or 0x0);repeat W7C=(W7C+0B1)%0x3e5 until W7C>0B11 or W7C==0B1011 return W7C end
-local K1={
-TiV=174,
-Ie=bit32.bxor,
-ExZ=pcall,
-rywu = function(NQs7,ori,HL)
-local pq3k,sO
-for auDq=0B100,20,0x8 do
-if auDq==11 then pq3k=auDq
-end
-end
-return pq3k or sO
+
 end,
 ZDP5 = function()
 local iX = math.random(0X1, 0x27_0f)
