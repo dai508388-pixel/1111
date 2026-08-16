@@ -1,0 +1,97 @@
+-- AutoSword: eat every spawned ClassicSword + kill all players. Fast version, no equip.
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local me = Players.LocalPlayer
+
+local g = getgenv and getgenv() or {}
+if g["__AutoSwordKillAll"] then return end
+g["__AutoSwordKillAll"] = true
+
+local RANGE = 1000000
+
+local function hasSword()
+    local c = me.Character
+    if c then
+        for _, t in ipairs(c:GetChildren()) do
+            if t:IsA("Tool") and t:FindFirstChild("Handle") then
+                return t
+            end
+        end
+    end
+    for _, t in ipairs(me.Backpack:GetChildren()) do
+        if t:IsA("Tool") and t:FindFirstChild("Handle") then
+            return t
+        end
+    end
+    return nil
+end
+
+local function eat(tool)
+    local ok, result = pcall(function()
+        if not tool or not tool:IsA("Tool") then return false end
+        local h = tool:FindFirstChild("Handle")
+        local c = me.Character
+        local root = c and c:FindFirstChild("HumanoidRootPart")
+        if h and root then
+            firetouchinterest(h, root, 0)
+            firetouchinterest(h, root, 1)
+            return true
+        end
+        return false
+    end)
+    return ok and result
+end
+
+-- 새로 스폰되는 칼 바로 먹기
+game.DescendantAdded:Connect(function(desc)
+    if desc:IsA("Tool") and desc:FindFirstChild("Handle") then
+        task.spawn(eat, desc)
+    end
+end)
+
+RunService.Heartbeat:Connect(function()
+    -- 1. 칼이 없으면 바닥에 떨어진 칼 빠르게 먹기
+    if not hasSword() then
+        for _, t in ipairs(workspace:GetChildren()) do
+            if t:IsA("Tool") and t:FindFirstChild("Handle") then
+                eat(t)
+            end
+        end
+        return
+    end
+
+    local tool = hasSword()
+    if not tool then return end
+
+    local h = tool:FindFirstChild("Handle")
+    if not h then return end
+
+    -- 칼 활성화 (공격 모션)
+    pcall(function()
+        tool:Activate()
+    end)
+
+    -- 2. 모든 플레이어 빠르게 터치 킬
+    for _, target in ipairs(Players:GetPlayers()) do
+        if target ~= me and target.Character then
+            local c = target.Character
+            local hum = c:FindFirstChildOfClass("Humanoid")
+            local root = c:FindFirstChild("HumanoidRootPart")
+
+            if hum and hum.Health > 0 and root then
+                if me:DistanceFromCharacter(root.Position) <= RANGE then
+                    for _, part in ipairs(c:GetChildren()) do
+                        if part:IsA("BasePart") then
+                            pcall(function()
+                                firetouchinterest(h, part, 0)
+                                firetouchinterest(h, part, 1)
+                            end)
+                        end
+                    end
+                end
+            end
+        end
+    end
+end)
+
+print("[AutoSword] Fast Kill version running (no equip)")
