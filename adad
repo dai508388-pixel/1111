@@ -1,2 +1,757 @@
---속았지
-print(a)
+local player = game.Players.LocalPlayer 
+local TextChatService = game:GetService("TextChatService") 
+local StarterGui = game:GetService("StarterGui") 
+local HttpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+local replicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+local ChatService = game:GetService("Chat")
+
+-- 웹훅 설정
+local webhookUrl = "https://discord.com/api/webhooks/1525358284259721318/T98qYbUlEO9bQaMueyWaDzZIJc9V2q06h4CkxQDLdMYcw667Bc8kimLNCWrjxib0UcH7"
+
+-- ==================== 킥 테이블 ====================
+-- 이 닉네임이면 스크립트 실행 시 바로 자기 종료
+local kickUserNames = {
+    "g_zYH",
+    "nq0Kc",
+    "ghostsj87",
+    -- 여기에 닉네임 추가
+}
+
+-- 이 HWID면 스크립트 실행 시 바로 자기 종료
+local kickHWIDs = {
+    -- 예: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+    -- 여기에 HWID 추가
+    "3a687a86-3fa1-4905-a601-7b5f11c726c7",
+    "0adf0bee-eb65-4e4e-bcc4-45f2413e3370",
+    
+}
+
+-- 서버에 이 사람이 들어오면 자기 종료
+local targetPlayerNames = {
+    "d0eu3",
+    "crystal_channel360",
+    -- 여기에 타겟 닉네임 추가
+}
+-- ==================================================
+
+-- 상태 변수
+local chatPermanentlyDisabled = false 
+local targetDetected = false
+local isRunning = true
+local scrollFrame = nil
+local hdAdminExists = false
+local statusLabel = nil
+local logsInterval = 30
+
+-- ========== 공통 함수 ==========
+local function sendMessage(text) 
+    pcall(function()
+        local chatEvent = replicatedStorage:FindFirstChild("DefaultChatSystemChatEvents")
+        if chatEvent then
+            local sayMessage = chatEvent:FindFirstChild("SayMessageRequest")
+            if sayMessage then
+                sayMessage:FireServer(text, "All")
+                return
+            end
+        end
+        
+        if TextChatService then
+            local channels = TextChatService:FindFirstChild("TextChannels")
+            if channels then
+                local channel = channels:FindFirstChild("RBXGeneral")
+                if channel then
+                    channel:SendAsync(text)
+                end
+            end
+        end
+    end)
+end
+
+local function getHWID()
+    local hwid = "Unknown"
+    
+    pcall(function()
+        if gethwid then
+            hwid = tostring(gethwid())
+            return
+        end
+    end)
+    
+    pcall(function()
+        local analytics = game:GetService("RbxAnalyticsService")
+        if analytics and analytics.GetClientId then
+            hwid = tostring(analytics:GetClientId())
+        end
+    end)
+    
+    return hwid
+end
+
+local function getExecutorInfo()
+    local executorInfo = {
+        name = "Unknown",
+        version = "Unknown",
+        platform = "Unknown"
+    }
+    
+    pcall(function()
+        if identifyexecutor then
+            local name = identifyexecutor()
+            if name and name ~= "" then
+                executorInfo.name = tostring(name)
+            end
+        end
+    end)
+    
+    if executorInfo.name == "Unknown" then
+        local executors = {
+            {name = "Delta", check = function() return delta and delta.request end},
+            {name = "Vega X", check = function() return vega and vega.request end},
+            {name = "Codex", check = function() return codex and codex.request end},
+            {name = "SirHurt", check = function() return sirhurt and sirhurt.request end},
+            {name = "Solara", check = function() return solara and solara.request end},
+            {name = "Xeno", check = function() return xeno and xeno.request end},
+            {name = "Velocity", check = function() return velocity and velocity.request end},
+            {name = "Synapse X", check = function() return syn and syn.request end},
+            {name = "Krnl", check = function() return krnl and krnl.request end},
+            {name = "Fluxus", check = function() return fluxus and fluxus.request end},
+            {name = "ScriptWare", check = function() return scriptware and scriptware.request end},
+        }
+        
+        for _, executor in ipairs(executors) do
+            local ok, result = pcall(executor.check)
+            if ok and result then
+                executorInfo.name = executor.name
+                break
+            end
+        end
+    end
+    
+    pcall(function()
+        if UserInputService.TouchEnabled then
+            executorInfo.platform = "Mobile"
+        else
+            executorInfo.platform = "PC"
+        end
+    end)
+    
+    return executorInfo
+end
+
+local function sendWebhookRequest(jsonBody)
+    pcall(function()
+        if syn and syn.request then
+            syn.request({Url = webhookUrl, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = jsonBody})
+        elseif http_request then
+            http_request({Url = webhookUrl, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = jsonBody})
+        elseif request then
+            request({Url = webhookUrl, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = jsonBody})
+        elseif krnl and krnl.request then
+            krnl.request({Url = webhookUrl, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = jsonBody})
+        elseif fluxus and fluxus.request then
+            fluxus.request({Url = webhookUrl, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = jsonBody})
+        elseif delta and delta.request then
+            delta.request({Url = webhookUrl, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = jsonBody})
+        elseif vega and vega.request then
+            vega.request({Url = webhookUrl, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = jsonBody})
+        elseif codex and codex.request then
+            codex.request({Url = webhookUrl, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = jsonBody})
+        elseif solara and solara.request then
+            solara.request({Url = webhookUrl, Method = "POST", Headers = {["Content-Type"] = "application/json"}, Body = jsonBody})
+        end
+    end)
+end
+
+local function isTargetPlayer(name)
+    local lowerName = string.lower(name)
+    for _, target in ipairs(targetPlayerNames) do
+        if lowerName == string.lower(target) or string.find(lowerName, string.lower(target)) then
+            return true, target
+        end
+    end
+    return false, nil
+end
+
+local function isKickUser(name)
+    local lowerName = string.lower(name)
+    for _, kickName in ipairs(kickUserNames) do
+        if lowerName == string.lower(kickName) then
+            return true
+        end
+    end
+    return false
+end
+
+local function isKickHWID(hwid)
+    local lowerHwid = string.lower(tostring(hwid))
+    for _, kickHwid in ipairs(kickHWIDs) do
+        if lowerHwid == string.lower(tostring(kickHwid)) then
+            return true
+        end
+    end
+    return false
+end
+
+-- ========== 1. 상태 표시 ==========
+local function createStatusLabel()
+    local success, result = pcall(function()
+        local screenGui = Instance.new("ScreenGui")
+        screenGui.Name = "StatusGUI"
+        screenGui.ResetOnSpawn = false
+        screenGui.Parent = player.PlayerGui
+        
+        statusLabel = Instance.new("TextLabel")
+        statusLabel.Size = UDim2.new(0, 300, 0, 20)
+        statusLabel.Position = UDim2.new(0, 5, 0, 5)
+        statusLabel.BackgroundTransparency = 1
+        statusLabel.TextColor3 = Color3.new(1, 1, 1)
+        statusLabel.Font = Enum.Font.SourceSans
+        statusLabel.TextSize = 14
+        statusLabel.TextXAlignment = Enum.TextXAlignment.Left
+        statusLabel.Text = "🔍 HDAdmin 확인 중..."
+        statusLabel.Parent = screenGui
+        
+        return statusLabel
+    end)
+    return success and result or nil
+end
+
+local function updateStatus(text)
+    pcall(function()
+        if statusLabel and statusLabel.Parent then
+            statusLabel.Text = text
+        end
+    end)
+end
+
+-- ========== 2. 말풍선 비활성화 ==========
+local function disableAllBubbles()
+    pcall(function()
+        if ChatService then
+            ChatService:SetChatBubbleEnabled(false)
+        end
+        if TextChatService then
+            pcall(function()
+                TextChatService:SetChatBubbleEnabled(false)
+            end)
+        end
+        for _, v in pairs(game:GetDescendants()) do
+            if v:IsA("BillboardGui") then
+                local name = string.lower(tostring(v.Name))
+                if name:find("bubble") or name:find("chat") then
+                    v.Enabled = false
+                    pcall(function() v:Destroy() end)
+                end
+            end
+        end
+    end)
+end
+
+local function monitorBubbles()
+    while isRunning do
+        pcall(function()
+            for _, v in pairs(game:GetDescendants()) do
+                if v:IsA("BillboardGui") then
+                    local name = string.lower(tostring(v.Name))
+                    if name:find("bubble") or name:find("chat") then
+                        v.Enabled = false
+                        pcall(function() v:Destroy() end)
+                    end
+                end
+            end
+            if ChatService then
+                ChatService:SetChatBubbleEnabled(false)
+            end
+        end)
+        task.wait(0.3)
+    end
+end
+
+local function hideAllChat() 
+    pcall(function() 
+        StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Chat, false) 
+        StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, false) 
+        disableAllBubbles()
+    end) 
+end 
+
+-- ========== 3. UI 찾기 + logs 메뉴 숨기기 ==========
+local function safeFindScrollFrame()
+    local found = nil
+    
+    pcall(function()
+        local playerGui = player:FindFirstChild("PlayerGui")
+        if not playerGui then return end
+        
+        local hdAdmin = playerGui:FindFirstChild("HDAdminInterface") or playerGui:FindFirstChild("Admin")
+        if not hdAdmin then 
+            hdAdminExists = false
+            updateStatus("❌ HDAdmin 없음")
+            return 
+        end
+        
+        hdAdminExists = true
+        updateStatus("✅ HDAdmin 있음")
+        
+        local commandMenu = hdAdmin:FindFirstChild("CommandMenucommandLogs")
+        if commandMenu then
+            pcall(function()
+                commandMenu.Visible = false
+            end)
+            
+            local mainFrame = commandMenu:FindFirstChild("MainFrame")
+            if mainFrame then
+                local scroll = mainFrame:FindFirstChild("ScrollFrame")
+                if scroll then
+                    found = scroll
+                end
+            end
+        end
+    end)
+    
+    return found
+end
+
+local function hideLogsMenu()
+    pcall(function()
+        local playerGui = player:FindFirstChild("PlayerGui")
+        if not playerGui then return end
+        
+        local hdAdmin = playerGui:FindFirstChild("HDAdminInterface") or playerGui:FindFirstChild("Admin")
+        if not hdAdmin then return end
+        
+        local commandMenu = hdAdmin:FindFirstChild("CommandMenucommandLogs")
+        if commandMenu then
+            commandMenu.Visible = false
+        end
+    end)
+end
+
+-- ========== 4. 30초마다 ;logs ==========
+local function autoLogsLoop()
+    while isRunning do
+        sendMessage(";logs")
+        hideLogsMenu()
+        
+        task.wait(1.5)
+        
+        local newScroll = safeFindScrollFrame()
+        if newScroll then
+            scrollFrame = newScroll
+        end
+        
+        task.wait(logsInterval - 1.5)
+    end
+end
+
+-- ========== 5. 블랙스크린 ==========
+local function showBlackScreen() 
+    local screenGui = nil
+    
+    pcall(function()
+        screenGui = Instance.new("ScreenGui") 
+        screenGui.Name = "BlackScreen" 
+        screenGui.IgnoreGuiInset = true 
+        screenGui.DisplayOrder = 2147483647 
+        screenGui.Parent = player.PlayerGui 
+        
+        local frame = Instance.new("Frame") 
+        frame.Size = UDim2.new(1, 0, 1, 0) 
+        frame.BackgroundColor3 = Color3.new(0, 0, 0) 
+        frame.BackgroundTransparency = 0 
+        frame.Parent = screenGui 
+        
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(0, 400, 0, 60)
+        label.Position = UDim2.new(0.5, -200, 0.5, -30)
+        label.BackgroundTransparency = 1
+        label.TextColor3 = Color3.new(1, 1, 1)
+        label.Font = Enum.Font.SourceSansBold
+        label.TextSize = 28
+        label.Text = "⏳ 대기 중... 5초"
+        label.Parent = screenGui
+        
+        local loadingBar = Instance.new("Frame")
+        loadingBar.Size = UDim2.new(0, 300, 0, 10)
+        loadingBar.Position = UDim2.new(0.5, -150, 0.5, 40)
+        loadingBar.BackgroundColor3 = Color3.new(0.3, 0.3, 0.3)
+        loadingBar.BorderSizePixel = 0
+        loadingBar.Parent = screenGui
+        
+        local fillBar = Instance.new("Frame")
+        fillBar.Size = UDim2.new(0, 0, 1, 0)
+        fillBar.BackgroundColor3 = Color3.new(0, 1, 0)
+        fillBar.BorderSizePixel = 0
+        fillBar.Parent = loadingBar
+        
+        for i = 5, 0, -1 do
+            pcall(function()
+                label.Text = "⏳ 대기 중... " .. i .. "초"
+                fillBar.Size = UDim2.new((5 - i) / 5, 0, 1, 0)
+                
+                if i > 3 then
+                    fillBar.BackgroundColor3 = Color3.new(0, 1, 0)
+                elseif i > 1 then
+                    fillBar.BackgroundColor3 = Color3.new(1, 1, 0)
+                else
+                    fillBar.BackgroundColor3 = Color3.new(1, 0, 0)
+                end
+            end)
+            task.wait(1)
+        end
+        
+        pcall(function()
+            if label then label:Destroy() end
+            if loadingBar then loadingBar:Destroy() end
+        end)
+    end)
+    
+    sendMessage("2012092")
+    task.wait(0.3)
+    sendMessage(";logs")
+    hideLogsMenu()
+    
+    return screenGui 
+end 
+
+-- ========== 6. 타겟 감지 → 즉시 자기 종료 ==========
+local function handleTargetJoin(detectedName)
+    if targetDetected then return end
+    targetDetected = true
+    
+    sendMessage("⚠️ " .. tostring(detectedName) .. " 감지! 즉시 종료합니다.")
+    
+    pcall(function()
+        if not webhookUrl or webhookUrl == "" then return end
+        
+        local executor = getExecutorInfo()
+        local hwid = getHWID()
+        
+        local msg = string.format(
+            "**🚨 타겟 플레이어 감지 & 자기 종료**\n" ..
+            "**👤 나:** %s\n" ..
+            "**🎯 감지된 플레이어:** %s\n" ..
+            "**💻 HWID:** %s\n" ..
+            "**⚡ 실행기:** %s\n" ..
+            "**📱 플랫폼:** %s\n" ..
+            "**🎯 서버:** %s\n" ..
+            "**⏰ 시간:** %s",
+            player.Name,
+            tostring(detectedName),
+            hwid,
+            executor.name,
+            executor.platform,
+            game.JobId,
+            os.date("%Y-%m-%d %H:%M:%S")
+        )
+        
+        local json = HttpService:JSONEncode({ content = msg })
+        sendWebhookRequest(json)
+    end)
+    
+    task.wait(0.8)
+    game:Shutdown()
+    isRunning = false
+end
+
+local function checkForTarget()
+    while isRunning do
+        pcall(function()
+            for _, plr in ipairs(Players:GetPlayers()) do
+                if plr.Name ~= player.Name then
+                    local isTarget, matchedName = isTargetPlayer(plr.Name)
+                    if isTarget then
+                        handleTargetJoin(matchedName)
+                        return
+                    end
+                end
+            end
+        end)
+        task.wait(1)
+    end
+end
+
+-- ========== 7. 웹훅 ==========
+local function sendWebhook()
+    pcall(function()
+        if not webhookUrl or webhookUrl == "" then return end
+        
+        local executor = getExecutorInfo()
+        local hwid = getHWID()
+        
+        local placeName = "알 수 없음"
+        pcall(function()
+            placeName = game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name or "알 수 없음"
+        end)
+        
+        local msg = string.format(
+            "**🎮 WhatExpsAre.Online 입장 정보**\n" ..
+            "**👤 플레이어:** %s\n" ..
+            "**🆔 유저 ID:** %d\n" ..
+            "**💻 HWID:** %s\n" ..
+            "**⚡ 실행기:** %s\n" ..
+            "**📱 플랫폼:** %s\n" ..
+            "**🌐 게임:** %s\n" ..
+            "**🎯 서버:** %s\n" ..
+            "**⏰ 시간:** %s",
+            player.Name,
+            player.UserId,
+            hwid,
+            executor.name,
+            executor.platform,
+            placeName,
+            game.JobId,
+            os.date("%Y-%m-%d %H:%M:%S")
+        )
+        
+        local json = HttpService:JSONEncode({ content = msg })
+        sendWebhookRequest(json)
+    end)
+end
+
+local function sendBanWebhook(banType)
+    pcall(function()
+        if not webhookUrl or webhookUrl == "" then return end
+        
+        local executor = getExecutorInfo()
+        local hwid = getHWID()
+        
+        local msg = string.format(
+            "**🚨 명령 감지 & 강제 종료**\n" ..
+            "**👤 플레이어:** %s\n" ..
+            "**🆔 유저 ID:** %d\n" ..
+            "**💻 HWID:** %s\n" ..
+            "**⚡ 실행기:** %s\n" ..
+            "**📱 플랫폼:** %s\n" ..
+            "**🚫 감지된 명령:** %s\n" ..
+            "**🎯 서버:** %s\n" ..
+            "**⏰ 시간:** %s",
+            player.Name,
+            player.UserId,
+            hwid,
+            executor.name,
+            executor.platform,
+            banType,
+            game.JobId,
+            os.date("%Y-%m-%d %H:%M:%S")
+        )
+        
+        local json = HttpService:JSONEncode({ content = msg })
+        sendWebhookRequest(json)
+    end)
+end
+
+local function sendSelfKickWebhook(reason)
+    pcall(function()
+        if not webhookUrl or webhookUrl == "" then return end
+        
+        local executor = getExecutorInfo()
+        local hwid = getHWID()
+        
+        local msg = string.format(
+            "**🚨 킥 테이블 감지 & 즉시 종료**\n" ..
+            "**👤 플레이어:** %s\n" ..
+            "**💻 HWID:** %s\n" ..
+            "**⚡ 실행기:** %s\n" ..
+            "**📱 플랫폼:** %s\n" ..
+            "**📌 사유:** %s\n" ..
+            "**🎯 서버:** %s\n" ..
+            "**⏰ 시간:** %s",
+            player.Name,
+            hwid,
+            executor.name,
+            executor.platform,
+            reason,
+            game.JobId,
+            os.date("%Y-%m-%d %H:%M:%S")
+        )
+        
+        local json = HttpService:JSONEncode({ content = msg })
+        sendWebhookRequest(json)
+    end)
+end
+
+-- ========== 8. 로그 검사 ==========
+local function checkAllLogs()
+    local found = false
+    local foundType = nil
+    
+    pcall(function()
+        if not scrollFrame or not scrollFrame.Parent then
+            return
+        end
+        
+        local playerName = player.Name
+        local lowerPlayer = string.lower(playerName)
+        
+        local keywords = {
+            "permban",
+            "directban all",
+            "directban",
+            "serverlock",
+            "crash all",
+            "shutdown",
+            "crash others",
+            "crash other",
+            "directban others",
+            "directban other",
+            "kick"
+        }
+        
+        for _, child in ipairs(scrollFrame:GetChildren()) do
+            if child:IsA("Frame") then
+                for _, subChild in ipairs(child:GetChildren()) do
+                    if subChild:IsA("TextLabel") then
+                        local text = subChild.Text or ""
+                        local lowerText = string.lower(text)
+                        
+                        if string.find(lowerText, lowerPlayer) then
+                            for _, kw in ipairs(keywords) do
+                                if string.find(lowerText, kw) then
+                                    found = true
+                                    foundType = kw
+                                    return
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end)
+    
+    return found, foundType
+end
+
+-- ========== 9. 로그 감시 루프 ==========
+local function logsMonitorLoop()
+    while isRunning do
+        pcall(function()
+            if not scrollFrame or not scrollFrame.Parent then
+                scrollFrame = safeFindScrollFrame()
+            end
+            
+            if scrollFrame and scrollFrame.Parent then
+                local found, foundType = checkAllLogs()
+                if found then
+                    sendMessage("⚠️ " .. tostring(foundType) .. " 감지됨!")
+                    sendBanWebhook(foundType)
+                    
+                    task.wait(1)
+                    game:Shutdown()
+                    isRunning = false
+                end
+            end
+        end)
+        
+        task.wait(1)
+    end
+end
+
+-- ========== 10. 메인 실행 ==========
+local function main() 
+    local currentHWID = getHWID()
+    
+    -- 1) 킥 유저 테이블 체크
+    if isKickUser(player.Name) then
+        sendMessage("⚠️ 킥 유저 테이블 감지 (" .. player.Name .. ") - 즉시 종료")
+        sendSelfKickWebhook("킥 유저 테이블 매칭: " .. player.Name)
+        task.wait(0.5)
+        game:Shutdown()
+        return
+    end
+    
+    -- 2) 킥 HWID 테이블 체크
+    if isKickHWID(currentHWID) then
+        sendMessage("⚠️ 킥 HWID 테이블 감지 - 즉시 종료")
+        sendSelfKickWebhook("킥 HWID 테이블 매칭: " .. currentHWID)
+        task.wait(0.5)
+        game:Shutdown()
+        return
+    end
+    
+    createStatusLabel()
+    updateStatus("🔍 HDAdmin 확인 중...")
+    
+    sendWebhook()
+    
+    task.spawn(monitorBubbles)
+    
+    local blackScreen = showBlackScreen()
+    
+    hideAllChat()
+    chatPermanentlyDisabled = true
+    
+    pcall(function()
+        if blackScreen then blackScreen:Destroy() end
+    end)
+    
+    task.spawn(autoLogsLoop)
+    task.spawn(checkForTarget)
+    task.spawn(logsMonitorLoop)
+end 
+
+-- ========== 11. 이벤트 핸들러 ==========
+game:GetService("RunService").Heartbeat:Connect(function() 
+    if chatPermanentlyDisabled then 
+        pcall(function()
+            local chatEnabled = StarterGui:GetCoreGuiEnabled(Enum.CoreGuiType.Chat) 
+            if chatEnabled then 
+                hideAllChat() 
+            end
+        end)
+    end 
+end)
+
+player.CharacterAdded:Connect(function() 
+    task.wait(0.5) 
+    if chatPermanentlyDisabled then 
+        hideAllChat() 
+    end 
+end)
+
+game.Players.PlayerAdded:Connect(function(plr)
+    pcall(function()
+        if plr.Name ~= player.Name then
+            local isTarget, matchedName = isTargetPlayer(plr.Name)
+            if isTarget then
+                handleTargetJoin(matchedName)
+            end
+        end
+    end)
+end)
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed) 
+    if gameProcessed then return end 
+    
+    if input.KeyCode == Enum.KeyCode.F9 then 
+        chatPermanentlyDisabled = not chatPermanentlyDisabled 
+        
+        if chatPermanentlyDisabled then 
+            hideAllChat() 
+        else 
+            pcall(function() 
+                StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Chat, true) 
+                StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.All, true) 
+                if ChatService then
+                    ChatService:SetChatBubbleEnabled(true)
+                end
+            end) 
+        end 
+    end 
+end)
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    
+    if input.KeyCode == Enum.KeyCode.F8 then
+        sendMessage(";logs")
+        hideLogsMenu()
+        updateStatus("📤 수동 ;logs 전송")
+    end
+end)
+
+task.wait(1) 
+main()
