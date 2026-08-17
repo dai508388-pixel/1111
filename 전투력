@@ -1,0 +1,335 @@
+-- [필수 변수들]
+local g = game
+local p = g:GetService("Players")
+local lp = p.LocalPlayer
+local rs = g:GetService("ReplicatedStorage")
+local b = rs:WaitForChild("bomb")
+local blind = rs:WaitForChild("blind")
+local RunService = g:GetService("RunService")
+
+-- [Fluent UI 라이브러리 로드]
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
+local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
+
+-- [창 생성]
+local Window = Fluent:CreateWindow({
+    Title = "BOMB CONTROL",
+    SubTitle = "by script",
+    TabWidth = 160,
+    Size = UDim2.fromOffset(580, 460),
+    Acrylic = false,
+    Theme = "Dark",
+    MinimizeKey = Enum.KeyCode.LeftControl
+})
+
+-- [메인 탭]
+local MainTab = Window:AddTab({ Title = "Main", Icon = "bomb" })
+
+-- ===== BOMB 섹션 =====
+local BombSection = MainTab:AddSection("BOMB")
+
+-- [토글: 전체 폭발]
+local ToggleAll = MainTab:AddToggle("ToggleAll", {
+    Title = "ALL BOMB",
+    Description = "자신을 제외한 모든 플레이어 폭발",
+    Default = false
+})
+
+-- [토글: 제외 폭발]
+local ToggleExclude = MainTab:AddToggle("ToggleExclude", {
+    Title = "EXCLUDE BOMB",
+    Description = "입력한 닉네임 제외하고 폭발",
+    Default = false
+})
+
+-- [입력창: 제외할 닉네임]
+local ExcludeInput = MainTab:AddInput("ExcludeInput", {
+    Title = "제외할 닉네임",
+    Description = "쉼표(,)로 구분",
+    Default = "",
+    Placeholder = "예: player1, player2, player3"
+})
+
+-- [슬라이더: BOMB 강도 조절 (1~200000)]
+local IntensitySlider = MainTab:AddSlider("Intensity", {
+    Title = "BOMB 코루틴 개수",
+    Description = "1~200000 (동시 실행 코루틴 수)",
+    Default = 100,
+    Min = 1,
+    Max = 200000,
+    Rounding = 1,
+    Callback = function(Value)
+        -- 값이 변경될 때마다 호출
+    end
+})
+
+-- ===== BLIND 섹션 =====
+local BlindSection = MainTab:AddSection("BLIND")
+
+-- [토글: 블라인드]
+local ToggleBlind = MainTab:AddToggle("ToggleBlind", {
+    Title = "BLIND",
+    Description = "모든 플레이어 블라인드",
+    Default = false
+})
+
+-- [슬라이더: BLIND 강도 조절 (1~100000)]
+local BlindIntensitySlider = MainTab:AddSlider("BlindIntensity", {
+    Title = "BLIND 코루틴 개수",
+    Description = "1~100000 (동시 실행 코루틴 수)",
+    Default = 100,
+    Min = 1,
+    Max = 100000,
+    Rounding = 1,
+    Callback = function(Value)
+        -- 값이 변경될 때마다 호출
+    end
+})
+
+-- [제외 여부 판별 함수]
+local function isExcluded(player)
+    local text = ExcludeInput.Value
+    if text == "" then return false end
+    
+    local nameList = string.split(text, ",")
+    local playerName = string.lower(player.Name)
+    local displayName = string.lower(player.DisplayName)
+    
+    for _, name in ipairs(nameList) do
+        local targetName = string.lower(string.gsub(name, "^%s*(.-)%s*$", "%1"))
+        if targetName ~= "" then
+            if string.find(playerName, targetName, 1, true) or string.find(displayName, targetName, 1, true) then
+                return true
+            end
+        end
+    end
+    return false
+end
+
+-- [BOMB 실행 함수]
+local function executeBomb()
+    if not b then return end
+    
+    local allState = ToggleAll.Value
+    local excludeState = ToggleExclude.Value
+    
+    local players = p:GetPlayers()
+    
+    for i = 1, #players do
+        local v = players[i]
+        if v ~= lp then
+            if allState then
+                b:FireServer(v)
+            elseif excludeState then
+                if not isExcluded(v) then
+                    b:FireServer(v)
+                end
+            end
+        end
+    end
+end
+
+-- [BLIND 실행 함수]
+local function executeBlind()
+    if not blind then return end
+    
+    local players = p:GetPlayers()
+    
+    for i = 1, #players do
+        local v = players[i]
+        if v ~= lp then
+            blind:FireServer(v)
+        end
+    end
+end
+
+-- [BOMB 메인 루프]
+local bombRunning = false
+local bombCoList = {}
+local bombLoopActive = false
+local bombRenderConnection = nil
+
+local function startBombLoop()
+    if bombLoopActive then
+        stopBombLoop()
+    end
+    
+    if not bombRunning then return end
+    
+    bombLoopActive = true
+    local intensity = IntensitySlider.Value
+    local count = math.min(intensity, 200000)
+    
+    bombRenderConnection = RunService.RenderStepped:Connect(function()
+        if not bombRunning then return end
+    end)
+    
+    local chunkSize = 5000
+    local totalCreated = 0
+    
+    while totalCreated < count do
+        local currentChunk = math.min(chunkSize, count - totalCreated)
+        
+        for i = 1, currentChunk do
+            local co = coroutine.create(function()
+                while bombRunning do
+                    executeBomb()
+                    task.wait()
+                end
+            end)
+            table.insert(bombCoList, co)
+            task.spawn(co)
+            totalCreated = totalCreated + 1
+        end
+        
+        task.wait(0.05)
+    end
+end
+
+local function stopBombLoop()
+    bombRunning = false
+    bombLoopActive = false
+    
+    if bombRenderConnection then
+        bombRenderConnection:Disconnect()
+        bombRenderConnection = nil
+    end
+    
+    for i = #bombCoList, 1, -1 do
+        bombCoList[i] = nil
+    end
+    bombCoList = {}
+end
+
+-- [BLIND 메인 루프]
+local blindRunning = false
+local blindCoList = {}
+local blindLoopActive = false
+local blindRenderConnection = nil
+
+local function startBlindLoop()
+    if blindLoopActive then
+        stopBlindLoop()
+    end
+    
+    if not blindRunning then return end
+    
+    blindLoopActive = true
+    local intensity = BlindIntensitySlider.Value
+    local count = math.min(intensity, 100000)
+    
+    blindRenderConnection = RunService.RenderStepped:Connect(function()
+        if not blindRunning then return end
+    end)
+    
+    local chunkSize = 5000
+    local totalCreated = 0
+    
+    while totalCreated < count do
+        local currentChunk = math.min(chunkSize, count - totalCreated)
+        
+        for i = 1, currentChunk do
+            local co = coroutine.create(function()
+                while blindRunning do
+                    executeBlind()
+                    task.wait()
+                end
+            end)
+            table.insert(blindCoList, co)
+            task.spawn(co)
+            totalCreated = totalCreated + 1
+        end
+        
+        task.wait(0.05)
+    end
+end
+
+local function stopBlindLoop()
+    blindRunning = false
+    blindLoopActive = false
+    
+    if blindRenderConnection then
+        blindRenderConnection:Disconnect()
+        blindRenderConnection = nil
+    end
+    
+    for i = #blindCoList, 1, -1 do
+        blindCoList[i] = nil
+    end
+    blindCoList = {}
+end
+
+-- [토글 이벤트 연결 - BOMB]
+ToggleAll:OnChanged(function(value)
+    if value then
+        if ToggleExclude.Value then
+            ToggleExclude:SetValue(false)
+        end
+        bombRunning = true
+        startBombLoop()
+    else
+        if not ToggleExclude.Value then
+            stopBombLoop()
+        end
+    end
+end)
+
+ToggleExclude:OnChanged(function(value)
+    if value then
+        if ToggleAll.Value then
+            ToggleAll:SetValue(false)
+        end
+        bombRunning = true
+        startBombLoop()
+    else
+        if not ToggleAll.Value then
+            stopBombLoop()
+        end
+    end
+end)
+
+IntensitySlider:OnChanged(function()
+    if bombRunning then
+        startBombLoop()
+    end
+end)
+
+-- [토글 이벤트 연결 - BLIND]
+ToggleBlind:OnChanged(function(value)
+    if value then
+        blindRunning = true
+        startBlindLoop()
+    else
+        stopBlindLoop()
+    end
+end)
+
+BlindIntensitySlider:OnChanged(function()
+    if blindRunning then
+        startBlindLoop()
+    end
+end)
+
+-- [창 닫기 이벤트]
+pcall(function()
+    Window:OnClose(function()
+        stopBombLoop()
+        stopBlindLoop()
+    end)
+end)
+
+-- [SaveManager 설정]
+SaveManager:SetLibrary(Fluent)
+InterfaceManager:SetLibrary(Fluent)
+
+SaveManager:IgnoreThemeSettings()
+SaveManager:SetIgnoreIndexes({})
+
+InterfaceManager:SetFolder("BombControl")
+SaveManager:SetFolder("BombControl/saves")
+
+InterfaceManager:BuildInterfaceSection(Window)
+SaveManager:BuildConfigSection(Window)
+
+Window:SelectTab(Window.Tabs[1])
