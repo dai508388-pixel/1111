@@ -1,14 +1,41 @@
--- AutoSword: eat every spawned ClassicSword + kill all players. Fast version, no equip.
+-- Rayfield UI + 타워 스크립트
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local Window = Rayfield:CreateWindow({
+   Name = "타워 스크립트",
+   LoadingTitle = "타워 스크립트",
+   LoadingSubtitle = "by ㄷㅇ 컴",
+   ConfigurationSaving = {
+      Enabled = false,
+   },
+   KeySystem = false,
+})
+
+local MainTab = Window:CreateTab("메인", 4483362458)
+local MainSection = MainTab:CreateSection("메인 기능")
+
+local TowerTab = Window:CreateTab("전투력 측정 타워", 4483362458)
+
+-- ===================== Services & Vars =====================
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local me = Players.LocalPlayer
 
-local g = getgenv and getgenv() or {}
-if g["__AutoSwordKillAll"] then return end
-g["__AutoSwordKillAll"] = true
-
 local RANGE = 1000000
 
+local isRunning = false
+local connection = nil
+local descendantConnection = nil
+
+local selectKillRunning = false
+local selectKillConnection = nil
+local selectedNames = {}
+
+local excludeKillRunning = false
+local excludeKillConnection = nil
+local excludeNames = {}
+
+-- ===================== Sword Functions =====================
 local function hasSword()
     local c = me.Character
     if c then
@@ -42,56 +69,384 @@ local function eat(tool)
     return ok and result
 end
 
--- 새로 스폰되는 칼 바로 먹기
-game.DescendantAdded:Connect(function(desc)
-    if desc:IsA("Tool") and desc:FindFirstChild("Handle") then
-        task.spawn(eat, desc)
-    end
-end)
-
-RunService.Heartbeat:Connect(function()
-    -- 1. 칼이 없으면 바닥에 떨어진 칼 빠르게 먹기
-    if not hasSword() then
-        for _, t in ipairs(workspace:GetChildren()) do
-            if t:IsA("Tool") and t:FindFirstChild("Handle") then
-                eat(t)
-            end
+local function parseNames(text)
+    local names = {}
+    if not text or text == "" then return names end
+    for name in string.gmatch(text, "[^,]+") do
+        name = name:match("^%s*(.-)%s*$")
+        if name and name ~= "" then
+            table.insert(names, name)
         end
-        return
     end
+    return names
+end
 
-    local tool = hasSword()
-    if not tool then return end
+local function isExcluded(playerName)
+    for _, name in ipairs(excludeNames) do
+        if name:lower() == playerName:lower() then
+            return true
+        end
+    end
+    return false
+end
 
-    local h = tool:FindFirstChild("Handle")
-    if not h then return end
+-- ===================== 올킬 =====================
+local function startAutoSword()
+    if isRunning then return end
+    isRunning = true
 
-    -- 칼 활성화 (공격 모션)
-    pcall(function()
-        tool:Activate()
+    descendantConnection = game.DescendantAdded:Connect(function(desc)
+        if not isRunning then return end
+        if desc:IsA("Tool") and desc:FindFirstChild("Handle") then
+            task.spawn(eat, desc)
+        end
     end)
 
-    -- 2. 모든 플레이어 빠르게 터치 킬
-    for _, target in ipairs(Players:GetPlayers()) do
-        if target ~= me and target.Character then
-            local c = target.Character
-            local hum = c:FindFirstChildOfClass("Humanoid")
-            local root = c:FindFirstChild("HumanoidRootPart")
+    connection = RunService.Heartbeat:Connect(function()
+        if not isRunning then return end
 
-            if hum and hum.Health > 0 and root then
-                if me:DistanceFromCharacter(root.Position) <= RANGE then
-                    for _, part in ipairs(c:GetChildren()) do
-                        if part:IsA("BasePart") then
-                            pcall(function()
-                                firetouchinterest(h, part, 0)
-                                firetouchinterest(h, part, 1)
-                            end)
+        if not hasSword() then
+            for _, t in ipairs(workspace:GetChildren()) do
+                if t:IsA("Tool") and t:FindFirstChild("Handle") then
+                    eat(t)
+                end
+            end
+            return
+        end
+
+        local tool = hasSword()
+        if not tool then return end
+        local h = tool:FindFirstChild("Handle")
+        if not h then return end
+
+        pcall(function() tool:Activate() end)
+
+        for _, target in ipairs(Players:GetPlayers()) do
+            if target ~= me and target.Character then
+                local c = target.Character
+                local hum = c:FindFirstChildOfClass("Humanoid")
+                local root = c:FindFirstChild("HumanoidRootPart")
+
+                if hum and hum.Health > 0 and root then
+                    if me:DistanceFromCharacter(root.Position) <= RANGE then
+                        for _, part in ipairs(c:GetChildren()) do
+                            if part:IsA("BasePart") then
+                                pcall(function()
+                                    firetouchinterest(h, part, 0)
+                                    firetouchinterest(h, part, 1)
+                                end)
+                            end
                         end
                     end
                 end
             end
         end
-    end
-end)
+    end)
 
-print("[AutoSword] Fast Kill version running (no equip)")
+    Rayfield:Notify({Title = "올킬", Content = "올킬이 시작되었습니다", Duration = 3})
+end
+
+local function stopAutoSword()
+    isRunning = false
+    if connection then connection:Disconnect() connection = nil end
+    if descendantConnection then descendantConnection:Disconnect() descendantConnection = nil end
+    Rayfield:Notify({Title = "올킬", Content = "올킬이 중지되었습니다", Duration = 3})
+end
+
+-- ===================== Select Kill =====================
+local function startSelectKill()
+    if selectKillRunning then return end
+    selectKillRunning = true
+
+    selectKillConnection = RunService.Heartbeat:Connect(function()
+        if not selectKillRunning then return end
+        if #selectedNames == 0 then return end
+
+        if not hasSword() then
+            for _, t in ipairs(workspace:GetChildren()) do
+                if t:IsA("Tool") and t:FindFirstChild("Handle") then
+                    eat(t)
+                end
+            end
+            return
+        end
+
+        local tool = hasSword()
+        if not tool then return end
+        local h = tool:FindFirstChild("Handle")
+        if not h then return end
+
+        pcall(function() tool:Activate() end)
+
+        for _, name in ipairs(selectedNames) do
+            local target = Players:FindFirstChild(name)
+            if target and target ~= me and target.Character then
+                local c = target.Character
+                local hum = c:FindFirstChildOfClass("Humanoid")
+                local root = c:FindFirstChild("HumanoidRootPart")
+
+                if hum and hum.Health > 0 and root then
+                    if me:DistanceFromCharacter(root.Position) <= RANGE then
+                        for _, part in ipairs(c:GetChildren()) do
+                            if part:IsA("BasePart") then
+                                pcall(function()
+                                    firetouchinterest(h, part, 0)
+                                    firetouchinterest(h, part, 1)
+                                end)
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end)
+
+    Rayfield:Notify({Title = "Select Kill", Content = "입력한 닉네임 대상으로 킬 시작", Duration = 3})
+end
+
+local function stopSelectKill()
+    selectKillRunning = false
+    if selectKillConnection then
+        selectKillConnection:Disconnect()
+        selectKillConnection = nil
+    end
+    Rayfield:Notify({Title = "Select Kill", Content = "Select Kill 중지됨", Duration = 3})
+end
+
+-- ===================== Kill All (제외) =====================
+local function startExcludeKill()
+    if excludeKillRunning then return end
+    excludeKillRunning = true
+
+    excludeKillConnection = RunService.Heartbeat:Connect(function()
+        if not excludeKillRunning then return end
+
+        if not hasSword() then
+            for _, t in ipairs(workspace:GetChildren()) do
+                if t:IsA("Tool") and t:FindFirstChild("Handle") then
+                    eat(t)
+                end
+            end
+            return
+        end
+
+        local tool = hasSword()
+        if not tool then return end
+        local h = tool:FindFirstChild("Handle")
+        if not h then return end
+
+        pcall(function() tool:Activate() end)
+
+        for _, target in ipairs(Players:GetPlayers()) do
+            if target ~= me and target.Character and not isExcluded(target.Name) then
+                local c = target.Character
+                local hum = c:FindFirstChildOfClass("Humanoid")
+                local root = c:FindFirstChild("HumanoidRootPart")
+
+                if hum and hum.Health > 0 and root then
+                    if me:DistanceFromCharacter(root.Position) <= RANGE then
+                        for _, part in ipairs(c:GetChildren()) do
+                            if part:IsA("BasePart") then
+                                pcall(function()
+                                    firetouchinterest(h, part, 0)
+                                    firetouchinterest(h, part, 1)
+                                end)
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end)
+
+    Rayfield:Notify({Title = "Kill All (제외)", Content = "제외한 사람 빼고 올킬 시작", Duration = 3})
+end
+
+local function stopExcludeKill()
+    excludeKillRunning = false
+    if excludeKillConnection then
+        excludeKillConnection:Disconnect()
+        excludeKillConnection = nil
+    end
+    Rayfield:Notify({Title = "Kill All (제외)", Content = "Kill All (제외) 중지됨", Duration = 3})
+end
+
+-- ===================== 메인 탭 UI =====================
+MainTab:CreateToggle({
+   Name = "올킬 및 자동 그랩툴",
+   CurrentValue = false,
+   Flag = "AutoKillAll",
+   Callback = function(Value)
+      if Value then
+         startAutoSword()
+      else
+         stopAutoSword()
+      end
+   end,
+})
+
+MainTab:CreateButton({
+   Name = "투명화 (메인ui 치우시면 있습니다)",
+   Callback = function()
+      task.spawn(function()
+         local success = pcall(function()
+            loadstring(game:HttpGet("https://pastebin.com/raw/fzx5knqe"))()
+         end)
+         Rayfield:Notify({
+            Title = success and "투명화" or "오류",
+            Content = success and "투명화 스크립트 실행됨" or "실행 실패",
+            Duration = 4,
+         })
+      end)
+   end,
+})
+
+MainTab:CreateButton({
+   Name = "Fling All (메인ui 치우시면 있습니다)",
+   Callback = function()
+      task.spawn(function()
+         local success = pcall(function()
+            loadstring(game:HttpGet('https://raw.githubusercontent.com/RovlixTinProject/NeverX/refs/heads/main/mfr.lua'))()
+         end)
+         Rayfield:Notify({
+            Title = success and "Fling All" or "오류",
+            Content = success and "Fling All 스크립트 실행됨" or "실행 실패",
+            Duration = 4,
+         })
+      end)
+   end,
+})
+
+-- ========== Select Kill ==========
+MainTab:CreateSection("Select Kill")
+
+MainTab:CreateInput({
+   Name = "닉네임 입력 (여러명은 쉼표로)",
+   PlaceholderText = "예: Player1, Player2, 닉네임3",
+   RemoveTextAfterFocusLost = false,
+   Callback = function(Text)
+      selectedNames = parseNames(Text)
+      if #selectedNames > 0 then
+         Rayfield:Notify({
+            Title = "Select Kill",
+            Content = "대상 설정됨: " .. table.concat(selectedNames, ", "),
+            Duration = 4,
+         })
+      else
+         Rayfield:Notify({
+            Title = "Select Kill",
+            Content = "입력된 닉네임이 없습니다",
+            Duration = 3,
+         })
+      end
+   end,
+})
+
+MainTab:CreateToggle({
+   Name = "Select Kill (입력한 닉만 킬)",
+   CurrentValue = false,
+   Flag = "SelectKill",
+   Callback = function(Value)
+      if Value then
+         startSelectKill()
+      else
+         stopSelectKill()
+      end
+   end,
+})
+
+MainTab:CreateButton({
+   Name = "입력 초기화 (Deselect All)",
+   Callback = function()
+      selectedNames = {}
+      Rayfield:Notify({
+         Title = "Select Kill",
+         Content = "모든 대상이 초기화되었습니다",
+         Duration = 3,
+      })
+   end,
+})
+
+-- ========== Kill All (제외) ==========
+MainTab:CreateSection("Kill All (제외)")
+
+MainTab:CreateInput({
+   Name = "제외할 닉네임 입력 (쉼표로 구분)",
+   PlaceholderText = "예: 친구1, 친구2",
+   RemoveTextAfterFocusLost = false,
+   Callback = function(Text)
+      excludeNames = parseNames(Text)
+      if #excludeNames > 0 then
+         Rayfield:Notify({
+            Title = "Kill All (제외)",
+            Content = "제외 대상: " .. table.concat(excludeNames, ", "),
+            Duration = 4,
+         })
+      else
+         Rayfield:Notify({
+            Title = "Kill All (제외)",
+            Content = "제외할 닉네임이 없습니다 (전원 킬)",
+            Duration = 3,
+         })
+      end
+   end,
+})
+
+MainTab:CreateToggle({
+   Name = "Kill All (제외) - 입력한 사람만 빼고 킬",
+   CurrentValue = false,
+   Flag = "ExcludeKill",
+   Callback = function(Value)
+      if Value then
+         startExcludeKill()
+      else
+         stopExcludeKill()
+      end
+   end,
+})
+
+MainTab:CreateButton({
+   Name = "제외 목록 초기화",
+   Callback = function()
+      excludeNames = {}
+      Rayfield:Notify({
+         Title = "Kill All (제외)",
+         Content = "제외 목록이 초기화되었습니다",
+         Duration = 3,
+      })
+   end,
+})
+
+-- ===================== 전투력 측정 타워 탭 =====================
+TowerTab:CreateSection("전투력 측정 타워")
+
+TowerTab:CreateButton({
+   Name = "전투력 측정 타워 모음집(blind 는 안될 수도)",
+   Callback = function()
+      task.spawn(function()
+         local success = pcall(function()
+            loadstring(game:HttpGet("https://raw.githubusercontent.com/dai508388-pixel/1111/refs/heads/main/%EC%A0%84%ED%88%AC%EB%A0%A5"))()
+         end)
+         
+         if success then
+            Rayfield:Notify({
+               Title = "전투력 측정 타워",
+               Content = "모음집 스크립트가 실행되었습니다",
+               Duration = 4,
+            })
+         else
+            Rayfield:Notify({
+               Title = "오류",
+               Content = "스크립트 실행 실패",
+               Duration = 4,
+            })
+         end
+      end)
+   end,
+})
+
+Rayfield:Notify({
+   Title = "타워 스크립트 Loaded",
+   Content = "메인 + 전투력 측정 타워 탭 사용 가능",
+   Duration = 5,
+})
