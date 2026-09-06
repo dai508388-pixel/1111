@@ -753,5 +753,79 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
     end
 end)
 
+-- ==================== 제작자 GUI ====================
+local function showCreatorGUI()
+    local TweenService = game:GetService("TweenService")
+
+    local gui = Instance.new("ScreenGui")
+    gui.Name = "CreatorGUI"
+    gui.ResetOnSpawn = false
+    gui.DisplayOrder = 999
+    gui.Parent = player:WaitForChild("PlayerGui")
+
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.new(0, 280, 0, 55)
+    frame.Position = UDim2.new(0.5, -140, 0.12, 0)
+    frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+    frame.BackgroundTransparency = 1
+    frame.BorderSizePixel = 0
+    frame.Parent = gui
+
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 10)
+    corner.Parent = frame
+
+    local label = Instance.new("TextLabel")
+    label.Size = UDim2.new(1, -20, 1, 0)
+    label.Position = UDim2.new(0, 10, 0, 0)
+    label.BackgroundTransparency = 1
+    label.Text = "이 컴은 ㄷㅇ 컴이 만들었습니다!!!"
+    label.TextColor3 = Color3.new(1, 1, 1)
+    label.TextTransparency = 1
+    label.TextSize = 18
+    label.Font = Enum.Font.GothamBold
+    label.Parent = frame
+
+    -- 페이드인
+    local fadeInFrame = TweenService:Create(
+        frame,
+        TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+        {BackgroundTransparency = 0.1}
+    )
+
+    local fadeInText = TweenService:Create(
+        label,
+        TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+        {TextTransparency = 0}
+    )
+
+    fadeInFrame:Play()
+    fadeInText:Play()
+
+    -- 3초 표시
+    task.wait(3)
+
+    -- 페이드아웃
+    local fadeOutFrame = TweenService:Create(
+        frame,
+        TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+        {BackgroundTransparency = 1}
+    )
+
+    local fadeOutText = TweenService:Create(
+        label,
+        TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+        {TextTransparency = 1}
+    )
+
+    fadeOutFrame:Play()
+    fadeOutText:Play()
+
+    fadeOutFrame.Completed:Wait()
+    gui:Destroy()
+end
+
+showCreatorGUI()
+
 task.wait(1) 
 main()
